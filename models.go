@@ -31,10 +31,10 @@ type Attendance struct {
 	gorm.Model
 	Student   Student
 	Course    string
-	Time      string
+	Period    string
 	Date      string
 	Teacher   Teacher
 	IsPresent bool
-	Applied   bool
-	Claimed   bool
+	IsApplied bool
+	IsClaimed bool
 }
