@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -141,6 +142,11 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 func authorizeRole(role string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip token verification for the login route
+			if r.URL.Path == "/login" || r.URL.Path == "/register" {
+				next.ServeHTTP(w, r)
+				return
+			}
 			// Extract JWT token from the request
 			tokenString := r.Header.Get("Authorization")
 			claims := &CustomClaims{}
@@ -154,36 +160,10 @@ func authorizeRole(role string) func(http.Handler) http.Handler {
 			}
 
 			// User is authorized, proceed to the next handler
+			fmt.Println("AR", claims.Username, claims.UserType)
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func verifyTokenMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip token verification for the login route
-		if r.URL.Path == "/login" || r.URL.Path == "/register" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// For all other routes, verify the token
-		tokenString := r.Header.Get("Authorization")
-
-		// Verify the token
-		claims := &CustomClaims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil || !token.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		// Token is valid, pass it through
-		next.ServeHTTP(w, r)
-	})
 }
 
 // getUsernameFromJWT extracts the username from the JWT in the request's Authorization header.

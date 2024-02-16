@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/rs/cors"
 )
 
 func initDB() {
@@ -28,25 +29,34 @@ func initDB() {
 func initServer() {
 	router := mux.NewRouter()
 
-	// Apply the middleware to the router
-	router.Use(verifyTokenMiddleware)
-
 	// Register unprotected routes
-	router.HandleFunc("/login", loginHandler).Methods("POST")
+	router.HandleFunc("/login", loginHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/register", registerHandler).Methods("POST")
 
 	// Register protected routes
 	studentRouter := router.PathPrefix("/student").Subrouter()
 	studentRouter.Use(authorizeRole("student"))
 	studentRouter.HandleFunc("/info", getStudentInfo).Methods("GET")
+	studentRouter.HandleFunc("/create", createStudentInfo).Methods("POST")
+	studentRouter.HandleFunc("/test", test).Methods("GET")
+
+	// Apply other middleware to the router
+	router.Use(jsonContentTypeMiddleware)
 
 	// ... register other routes for Teacher and IPM ...
+
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5173"},
+		AllowCredentials: true,
+	})
+
+	handler := c.Handler(router)
 
 	// Print the message
 	fmt.Println("Server starting on http://localhost:8000...")
 
 	// Start the server
-	log.Fatal(http.ListenAndServe(":8000", router))
+	log.Fatal(http.ListenAndServe(":8000", handler))
 }
 
 func main() {
