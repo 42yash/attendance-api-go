@@ -2,18 +2,22 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+
+	"gorm.io/gorm"
 	// ... other imports
 )
 
-func test(w http.ResponseWriter, r *http.Request) {
-	username, err := getUsernameFromJWT(r)
-	if err != nil {
-		http.Error(w, "Failed to get username from JWT", http.StatusInternalServerError)
-		return
-	}
-	fmt.Println(username)
+type Student struct {
+	gorm.Model                        // Includes fields ID, CreatedAt, UpdatedAt, DeletedAt
+	Username             string       // Foreign key for the User
+	Name                 string       // Student's full name
+	Class                string       // Class or course the student is enrolled in
+	RegisterNumber       string       // Unique registration number for the student
+	Email                string       // Student's email address
+	Phone                string       // Student's phone number
+	AttendancePercentage float64      // Student's attendance percentage
+	Attendance           []Attendance `gorm:"foreignKey:StudentId"`
 }
 
 func createStudentInfo(w http.ResponseWriter, r *http.Request) {
@@ -40,17 +44,16 @@ func createStudentInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer sqlDB.Close()
 
-	// Create a new student record in the database
-	student.Username = username
-	result := db.Create(&student)
+	// Find the student and preload the attendance records
+	result := db.Preload("Attendance").Where("username = ?", username).First(&student)
 	if result.Error != nil {
-		http.Error(w, "Failed to create student record", http.StatusInternalServerError)
+		http.Error(w, result.Error.Error(), http.StatusNotFound)
 		return
 	}
 
-	// Return a success message
-	w.WriteHeader(http.StatusCreated)
-
+	// Respond with the student info
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(student)
 }
 
 func getStudentInfo(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +63,8 @@ func getStudentInfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get username from JWT", http.StatusInternalServerError)
 		return
 	}
+
+	// Connect to the database
 	db, sqlDB, err := connectDB()
 	if err != nil {
 		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
@@ -67,14 +72,13 @@ func getStudentInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer sqlDB.Close()
 
-	// Fetch student info from the database
+	// Fetch student info from the database and preload the attendance records
 	var student Student
-	result := db.Where("username = ?", username).First(&student)
+	result := db.Preload("Attendance").Where("username = ?", username).First(&student)
 	if result.Error != nil {
 		http.Error(w, "Student not found", http.StatusNotFound)
 		return
 	}
-	fmt.Println(student)
 
 	// Return student info as JSON
 	w.Header().Set("Content-Type", "application/json")

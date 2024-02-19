@@ -36,8 +36,8 @@ func initServer() {
 	// /student routes
 	studentRouter := router.PathPrefix("/student").Subrouter()
 	studentRouter.Use(authorizeRole("student"))
-	studentRouter.HandleFunc("/info", getStudentInfo).Methods("GET")
 	studentRouter.HandleFunc("/create", createStudentInfo).Methods("POST")
+	studentRouter.HandleFunc("/info", getStudentInfo).Methods("GET")
 
 	// /attendance routes
 	attendanceRouter := router.PathPrefix("/attendance").Subrouter()
@@ -48,8 +48,6 @@ func initServer() {
 	// Apply other middleware to the router
 	router.Use(jsonContentTypeMiddleware)
 	router.Use(loggingMiddleware)
-
-	// ... register other routes for Teacher and IPM ...
 
 	corsWrapper := cors.New(cors.Options{
 		AllowedOrigins: []string{"http://localhost:5173"},
