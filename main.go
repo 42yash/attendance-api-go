@@ -18,7 +18,7 @@ func initDB() {
 	defer sqlDB.Close()
 
 	// Perform the migration
-	if err := db.AutoMigrate(&User{}, &Student{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Student{}, &Attendance{}); err != nil {
 		log.Fatalf("Error auto migrating tables: %v", err)
 	}
 
@@ -30,27 +30,34 @@ func initServer() {
 	router := mux.NewRouter()
 
 	// Register unprotected routes
-	router.HandleFunc("/login", loginHandler).Methods("POST", "OPTIONS")
+	router.HandleFunc("/login", loginHandler).Methods("POST")
 	router.HandleFunc("/register", registerHandler).Methods("POST")
 
-	// Register protected routes
+	// /student routes
 	studentRouter := router.PathPrefix("/student").Subrouter()
 	studentRouter.Use(authorizeRole("student"))
 	studentRouter.HandleFunc("/info", getStudentInfo).Methods("GET")
 	studentRouter.HandleFunc("/create", createStudentInfo).Methods("POST")
-	studentRouter.HandleFunc("/test", test).Methods("GET")
+
+	// /attendance routes
+	attendanceRouter := router.PathPrefix("/attendance").Subrouter()
+	attendanceRouter.HandleFunc("/create", func(w http.ResponseWriter, r *http.Request) {
+		authorizeRole("admin")(http.HandlerFunc(createAttendanceHandler)).ServeHTTP(w, r)
+	}).Methods("POST")
 
 	// Apply other middleware to the router
 	router.Use(jsonContentTypeMiddleware)
+	router.Use(loggingMiddleware)
 
 	// ... register other routes for Teacher and IPM ...
 
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},
-		AllowCredentials: true,
+	corsWrapper := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://localhost:5173"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Authorization", "Content-Type"},
 	})
 
-	handler := c.Handler(router)
+	handler := corsWrapper.Handler(router)
 
 	// Print the message
 	fmt.Println("Server starting on http://localhost:8000...")

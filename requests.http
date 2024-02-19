@@ -30,7 +30,8 @@ content-type: application/json
 
 
 GET http://localhost:8000/student/info HTTP/1.1
-Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InNhbmphbmEiLCJ1c2VydHlwZSI6InN0dWRlbnQiLCJleHAiOjE3MDgxNTIxNjAsImlzcyI6ImF0dGVuZGFuY2UtYXBpLWdvIn0.8cfcfrq0bTowHCpYYJB62w43hsWO7N1a-25jCnInKSo
+Origin: http://localhost:5173
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InNhbmphbmEiLCJ1c2VydHlwZSI6InN0dWRlbnQiLCJleHAiOjE3MDg0MTc1MjIsImlzcyI6ImF0dGVuZGFuY2UtYXBpLWdvIn0.7ka9DjfxDNvgBV9lGuapRbXAKnAuT4cd1O-cq7v60r0
 
 ###
 POST http://localhost:8000/student/create HTTP/1.1
