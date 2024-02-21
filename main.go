@@ -18,7 +18,7 @@ func initDB() {
 	defer sqlDB.Close()
 
 	// Perform the migration
-	if err := db.AutoMigrate(&User{}, &Student{}, &Attendance{}); err != nil {
+	if err := db.Debug().AutoMigrate(&User{}, &Student{}, &Attendance{}, &MedicalClaim{}, &ClaimReview{}); err != nil {
 		log.Fatalf("Error auto migrating tables: %v", err)
 	}
 
