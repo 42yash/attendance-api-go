@@ -10,7 +10,3 @@ type User struct {
 	Password   string `gorm:"size:60"`
 	UserType   string
 }
-
-type Teacher struct {
-	Username string
-}

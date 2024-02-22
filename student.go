@@ -9,15 +9,16 @@ import (
 )
 
 type Student struct {
-	gorm.Model                        // Includes fields ID, CreatedAt, UpdatedAt, DeletedAt
-	Username             string       // Foreign key for the User
-	Name                 string       // Student's full name
-	Class                string       // Class or course the student is enrolled in
-	RegisterNumber       string       // Unique registration number for the student
-	Email                string       // Student's email address
-	Phone                string       // Student's phone number
-	AttendancePercentage float64      // Student's attendance percentage
-	Attendance           []Attendance `gorm:"foreignKey:StudentId"`
+	gorm.Model                          // Includes fields ID, CreatedAt, UpdatedAt, DeletedAt
+	Username             string         // Foreign key for the User
+	Name                 string         // Student's full name
+	Class                string         // Class or course the student is enrolled in
+	RegisterNumber       string         // Unique registration number for the student
+	Email                string         // Student's email address
+	Phone                string         // Student's phone number
+	AttendancePercentage float64        // Student's attendance percentage
+	Attendance           []Attendance   `gorm:"foreignKey:StudentId"`
+	MedicalClaims        []MedicalClaim `gorm:"foreignKey:StudentId"`
 }
 
 func createStudentInfo(w http.ResponseWriter, r *http.Request) {

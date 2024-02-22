@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
 
@@ -23,6 +25,7 @@ type ClaimReview struct {
 	AttendanceId uint         // Foreign key to the Attendance
 	Attendance   Attendance   `gorm:"foreignKey:AttendanceId"`
 	TeacherId    string       // Foreign key to the Teacher
+	Teacher      Teacher      `gorm:"foreignKey:TeacherId"`
 	Status       string       // Whether the claim was approved or rejected
 	Message      string       // Optional message left by the teacher
 }
@@ -113,6 +116,7 @@ func createMedicalClaim(w http.ResponseWriter, r *http.Request) {
 				ClaimId:      medicalClaim.ID,
 				AttendanceId: attendanceRecord.ID,
 				TeacherId:    attendanceRecord.TeacherId,
+				Status:       "pending",
 			}
 
 			result := db.Create(&claimReview)
@@ -123,13 +127,59 @@ func createMedicalClaim(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result = db.Preload("ClaimReviews").Where("id = ?", medicalClaim.ID).First(&medicalClaim)
+	// Respond with newly created medical claim
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(medicalClaim)
+}
+
+func getMedicalClaimByIdHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	claimId, err := strconv.Atoi(vars["claimid"])
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	db, sqlDB, err := connectDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer sqlDB.Close()
+
+	var medicalClaim MedicalClaim
+	result := db.Preload("ClaimReviews").Preload("ClaimReviews.Teacher").Preload("ClaimReviews.Attendance").Where("id = ?", claimId).First(&medicalClaim)
 	if result.Error != nil {
 		http.Error(w, "Medical claim not found", http.StatusNotFound)
 		return
 	}
 
-	// Respond with newly created medical claim
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(medicalClaim)
+}
+
+func getClaimsHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the username from JWT claims
+	username, err := getUsernameFromJWT(r)
+	if err != nil {
+		http.Error(w, "Failed to get username from JWT", http.StatusInternalServerError)
+		return
+	}
+
+	// Connect to the database
+	db, sqlDB, err := connectDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer sqlDB.Close()
+
+	// Fetch all medical claims for the student
+	var student Student
+	result := db.Preload("MedicalClaims").Where("username = ?", username).First(&student)
+	if result.Error != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(student.MedicalClaims)
 }
