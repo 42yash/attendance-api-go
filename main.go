@@ -18,7 +18,7 @@ func initDB() {
 	defer sqlDB.Close()
 
 	// Perform the migration
-	if err := db.Debug().AutoMigrate(&User{}, &Student{}, &Attendance{}, &MedicalClaim{}, &ClaimReview{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Student{}, &Attendance{}, &MedicalClaim{}, &ClaimReview{}); err != nil {
 		log.Fatalf("Error auto migrating tables: %v", err)
 	}
 
@@ -44,6 +44,10 @@ func initServer() {
 	attendanceRouter.HandleFunc("/create", func(w http.ResponseWriter, r *http.Request) {
 		authorizeRole("admin")(http.HandlerFunc(createAttendanceHandler)).ServeHTTP(w, r)
 	}).Methods("POST")
+
+	// /claims routes
+	claimsRouter := router.PathPrefix("/claims").Subrouter()
+	claimsRouter.HandleFunc("/create", createMedicalClaim).Methods("POST")
 
 	// Apply other middleware to the router
 	router.Use(jsonContentTypeMiddleware)

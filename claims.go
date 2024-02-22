@@ -1,6 +1,11 @@
 package main
 
-import "gorm.io/gorm"
+import (
+	"encoding/json"
+	"net/http"
+
+	"gorm.io/gorm"
+)
 
 type MedicalClaim struct {
 	gorm.Model
@@ -18,6 +23,113 @@ type ClaimReview struct {
 	AttendanceId uint         // Foreign key to the Attendance
 	Attendance   Attendance   `gorm:"foreignKey:AttendanceId"`
 	TeacherId    string       // Foreign key to the Teacher
-	Approved     bool         // Whether the claim was approved or rejected
+	Status       string       // Whether the claim was approved or rejected
 	Message      string       // Optional message left by the teacher
+}
+
+type RequestBody struct {
+	Reason      string   `json:"reason"`
+	Description string   `json:"description"`
+	Data        []string `json:"data"`
+	Date        []string
+	Period      []string
+}
+
+func getAttendanceRecords(date string, period string, studentId uint) ([]Attendance, error) {
+	db, sqlDB, err := connectDB()
+	if err != nil {
+		return nil, err
+	}
+	defer sqlDB.Close()
+
+	var records []Attendance
+	result := db.Where("date = ? AND period = ? AND student_id = ?", date, period, studentId).Find(&records)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return records, nil
+}
+
+func createMedicalClaim(w http.ResponseWriter, r *http.Request) {
+	var requestBody RequestBody
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Set Reason and Description
+	var medicalClaim MedicalClaim
+	medicalClaim.Reason = requestBody.Reason
+	medicalClaim.Description = requestBody.Description
+
+	// Extract the username from JWT claims
+	username, err := getUsernameFromJWT(r)
+	if err != nil {
+		http.Error(w, "Failed to get username from JWT", http.StatusInternalServerError)
+		return
+	}
+
+	// Connect to the database
+	db, sqlDB, err := connectDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer sqlDB.Close()
+
+	// Get studentid from username
+	var student Student
+	result := db.Preload("Attendance").Where("username = ?", username).First(&student)
+	if result.Error != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	medicalClaim.StudentId = student.ID
+
+	// Save medicalClaim to the database
+	result = db.Create(&medicalClaim)
+	if result.Error != nil {
+		http.Error(w, "Failed to save medical claim", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch all attendance using requestBody from db
+
+	for _, dp := range requestBody.Data {
+		period := dp[len(dp)-2:]
+		date := dp[:len(dp)-3]
+
+		attendanceRecords, err := getAttendanceRecords(date, period, student.ID)
+		if err != nil {
+			http.Error(w, "Failed to fetch attendance records", http.StatusInternalServerError)
+			return
+		}
+
+		for _, attendanceRecord := range attendanceRecords {
+			claimReview := ClaimReview{
+				ClaimId:      medicalClaim.ID,
+				AttendanceId: attendanceRecord.ID,
+				TeacherId:    attendanceRecord.TeacherId,
+			}
+
+			result := db.Create(&claimReview)
+			if result.Error != nil {
+				http.Error(w, "Failed to create claim review", http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	result = db.Preload("ClaimReviews").Where("id = ?", medicalClaim.ID).First(&medicalClaim)
+	if result.Error != nil {
+		http.Error(w, "Medical claim not found", http.StatusNotFound)
+		return
+	}
+
+	// Respond with newly created medical claim
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(medicalClaim)
 }

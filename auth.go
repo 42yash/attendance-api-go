@@ -148,7 +148,14 @@ func authorizeRole(role string) func(http.Handler) http.Handler {
 				return
 			}
 			// Extract JWT token from the request
-			tokenString := r.Header.Get("Authorization")
+			authHeader := r.Header.Get("Authorization")
+			splitHeader := strings.Split(authHeader, "Bearer ")
+			if len(splitHeader) < 2 {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			tokenString := splitHeader[1]
+
 			claims := &CustomClaims{}
 			token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 				return jwtKey, nil
@@ -160,7 +167,6 @@ func authorizeRole(role string) func(http.Handler) http.Handler {
 			}
 
 			// User is authorized, proceed to the next handler
-			fmt.Println("AR", claims.Username, claims.UserType)
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -169,22 +175,19 @@ func authorizeRole(role string) func(http.Handler) http.Handler {
 // getUsernameFromJWT extracts the username from the JWT in the request's Authorization header.
 func getUsernameFromJWT(r *http.Request) (string, error) {
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return "", nil // No token provided
-	}
+	tokenString := strings.Split(authHeader, "Bearer ")[1]
 
-	// Expecting "Bearer <token>"
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte("your_secret_key"), nil
 	})
-	if err != nil {
-		return "", err // Token parsing error
-	}
 
-	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-		return claims.Username, nil
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		username := claims["username"].(string)
+		return username, nil
+	} else {
+		return "", err
 	}
-
-	return "", nil // Token is not valid
 }
