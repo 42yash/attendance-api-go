@@ -14,7 +14,7 @@ type MedicalClaim struct {
 	StudentId    uint
 	Reason       string
 	Description  string
-	Status       string
+	Status       string        `gorm:"default:Pending"`
 	ClaimReviews []ClaimReview `gorm:"foreignKey:ClaimId"`
 }
 
@@ -26,7 +26,7 @@ type ClaimReview struct {
 	Attendance   Attendance   `gorm:"foreignKey:AttendanceId"`
 	TeacherId    string       // Foreign key to the Teacher
 	Teacher      Teacher      `gorm:"foreignKey:TeacherId"`
-	Status       string       // Whether the claim was approved or rejected
+	Status       string       `gorm:"default:Pending"`
 	Message      string       // Optional message left by the teacher
 }
 

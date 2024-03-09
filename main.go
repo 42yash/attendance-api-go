@@ -54,6 +54,7 @@ func initServer() {
 	// /teacher routes
 	teacherRouter := router.PathPrefix("/teacher").Subrouter()
 	teacherRouter.HandleFunc("/create", createTeacherHandler).Methods("POST")
+	teacherRouter.HandleFunc("/claims", getClaimsByTeacherIdHandler).Methods("GET")
 
 	// Apply other middleware to the router
 	router.Use(jsonContentTypeMiddleware)
