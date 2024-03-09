@@ -1,0 +1,4 @@
+# Install Gin Gonic 
+go get -u github.com/gin-gonic/gin
+# Install Air
+go get -u github.com/cosmtrek/air
