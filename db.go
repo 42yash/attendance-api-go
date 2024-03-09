@@ -2,16 +2,24 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func connectDB() (*gorm.DB, *sql.DB, error) {
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
 	connStr := os.Getenv("DATABASE_URL")
 	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {

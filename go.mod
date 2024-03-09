@@ -13,6 +13,8 @@ require (
 	gorm.io/gorm v1.25.7
 )
 
+require github.com/joho/godotenv v1.5.1
+
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
