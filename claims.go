@@ -9,6 +9,12 @@ import (
 	"gorm.io/gorm"
 )
 
+type File struct {
+	gorm.Model
+	Name           string
+	Path           string
+	MedicalClaimID uint
+}
 type MedicalClaim struct {
 	gorm.Model
 	StudentId    uint
@@ -16,6 +22,7 @@ type MedicalClaim struct {
 	Description  string
 	Status       string        `gorm:"default:Pending"`
 	ClaimReviews []ClaimReview `gorm:"foreignKey:ClaimId"`
+	Files        []File        `gorm:"foreignKey:MedicalClaimID"`
 }
 
 type ClaimReview struct {
@@ -36,6 +43,8 @@ type RequestBody struct {
 	Data        []string `json:"data"`
 	Date        []string
 	Period      []string
+	Files       []string `json:"files"`
+	FileNames   []string `json:"filenames"`
 }
 
 func getAttendanceRecords(date string, period string, studentId uint) ([]Attendance, error) {
@@ -99,6 +108,22 @@ func createMedicalClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(requestBody.Files) > 0 {
+		for i, file := range requestBody.Files {
+			fileRecord := File{
+				Path:           file,
+				Name:           requestBody.FileNames[i],
+				MedicalClaimID: medicalClaim.ID, // Link the file to the medical claim
+			}
+
+			result := db.Create(&fileRecord)
+			if result.Error != nil {
+				http.Error(w, "Failed to save file record", http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
 	// Fetch all attendance using requestBody from db
 
 	for _, dp := range requestBody.Data {
@@ -148,7 +173,7 @@ func getMedicalClaimByIdHandler(w http.ResponseWriter, r *http.Request) {
 	defer sqlDB.Close()
 
 	var medicalClaim MedicalClaim
-	result := db.Preload("ClaimReviews").Preload("ClaimReviews.Teacher").Preload("ClaimReviews.Attendance").Where("id = ?", claimId).First(&medicalClaim)
+	result := db.Preload("ClaimReviews").Preload("Files").Preload("ClaimReviews.Teacher").Preload("ClaimReviews.Attendance").Where("id = ?", claimId).First(&medicalClaim)
 	if result.Error != nil {
 		http.Error(w, "Medical claim not found", http.StatusNotFound)
 		return
