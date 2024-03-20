@@ -21,7 +21,9 @@ func connectDB() (*gorm.DB, *sql.DB, error) {
 	}
 
 	connStr := os.Getenv("DATABASE_URL")
-	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
+	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
+		// Logger: logger.Default.LogMode(logger.Error),
+	})
 	if err != nil {
 		return nil, nil, err
 	}

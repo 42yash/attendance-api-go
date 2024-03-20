@@ -18,6 +18,7 @@ type File struct {
 type MedicalClaim struct {
 	gorm.Model
 	StudentId    uint
+	Student      Student `gorm:"foreignKey:StudentId"`
 	Reason       string
 	Description  string
 	Status       string        `gorm:"default:Pending"`
@@ -173,7 +174,7 @@ func getMedicalClaimByIdHandler(w http.ResponseWriter, r *http.Request) {
 	defer sqlDB.Close()
 
 	var medicalClaim MedicalClaim
-	result := db.Preload("ClaimReviews").Preload("Files").Preload("ClaimReviews.Teacher").Preload("ClaimReviews.Attendance").Where("id = ?", claimId).First(&medicalClaim)
+	result := db.Preload("Student").Preload("ClaimReviews").Preload("Files").Preload("ClaimReviews.Teacher").Preload("ClaimReviews.Attendance").Where("id = ?", claimId).First(&medicalClaim)
 	if result.Error != nil {
 		http.Error(w, "Medical claim not found", http.StatusNotFound)
 		return
@@ -182,7 +183,7 @@ func getMedicalClaimByIdHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(medicalClaim)
 }
 
-func getClaimsHandler(w http.ResponseWriter, r *http.Request) {
+func getClaimsByStudentHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract the username from JWT claims
 	username, err := getUsernameFromJWT(r)
 	if err != nil {
@@ -207,4 +208,31 @@ func getClaimsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(student.MedicalClaims)
+}
+
+func getClaimsByTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the username from JWT claims
+	username, err := getUsernameFromJWT(r)
+	if err != nil {
+		http.Error(w, "Failed to get username from JWT", http.StatusInternalServerError)
+		return
+	}
+
+	// Connect to the database
+	db, sqlDB, err := connectDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer sqlDB.Close()
+
+	// Fetch all medical claims for the student
+	var teacher Teacher
+	result := db.Preload("Claim").Preload("Claim.MedicalClaim").Preload("Claim.MedicalClaim.Files").Preload("Claim.MedicalClaim.Student").Where("username = ?", username).First(&teacher)
+	if result.Error != nil {
+		http.Error(w, "Student not found", http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(teacher.Claim)
 }
