@@ -236,3 +236,62 @@ func getClaimsByTeacherHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(teacher.Claim)
 }
+
+func putClaimReviewHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	claimId, err := strconv.Atoi(vars["claimid"])
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	var requestBody ClaimReview
+	err = json.NewDecoder(r.Body).Decode(&requestBody)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Extract the username from JWT claims
+	username, err := getUsernameFromJWT(r)
+	if err != nil {
+		http.Error(w, "Failed to get username from JWT", http.StatusInternalServerError)
+		return
+	}
+
+	// Connect to the database
+	db, sqlDB, err := connectDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer sqlDB.Close()
+
+	// Fetch the teacher
+	var teacher Teacher
+	result := db.Where("username = ?", username).First(&teacher)
+	if result.Error != nil {
+		http.Error(w, "Teacher not found", http.StatusNotFound)
+		return
+	}
+
+	// Fetch the claim review
+	var claimReview ClaimReview
+	result = db.Where("id = ?", claimId).First(&claimReview)
+	if result.Error != nil {
+		http.Error(w, "Claim review not found", http.StatusNotFound)
+		return
+	}
+
+	// Update the claim review
+	claimReview.Status = requestBody.Status
+	claimReview.Message = requestBody.Message
+
+	result = db.Save(&claimReview)
+	if result.Error != nil {
+		http.Error(w, "Failed to save claim review", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(claimReview)
+}
