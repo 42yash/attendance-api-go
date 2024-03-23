@@ -55,3 +55,27 @@ func getTeacherByIdHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(teacher)
 }
+
+func getTeacherByTokenHandler(w http.ResponseWriter, r *http.Request) {
+	username, err := getUsernameFromJWT(r)
+	if err != nil {
+		http.Error(w, "Failed to get username from JWT", http.StatusInternalServerError)
+		return
+	}
+
+	db, sqlDB, err := connectDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer sqlDB.Close()
+
+	var teacher Teacher
+	result := db.Where("username = ?", username).First(&teacher)
+	if result.Error != nil {
+		http.Error(w, result.Error.Error(), http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(teacher)
+}
