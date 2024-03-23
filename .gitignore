@@ -27,3 +27,4 @@ tmp/
 api
 tmp/main
 tmp/main
+.env

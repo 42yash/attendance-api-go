@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/rs/cors"
 )
@@ -62,8 +64,14 @@ func initServer() {
 	router.Use(jsonContentTypeMiddleware)
 	router.Use(loggingMiddleware)
 
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
 	corsWrapper := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:5173"},
+		AllowedOrigins: []string{os.Getenv("FRONTEND_URL")},
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Authorization", "Content-Type"},
 	})
