@@ -28,3 +28,4 @@ api
 tmp/main
 tmp/main
 .env
+/tmp
