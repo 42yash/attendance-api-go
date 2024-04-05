@@ -22,6 +22,7 @@ type MedicalClaim struct {
 	Reason       string
 	Description  string
 	Status       string        `gorm:"default:Pending"`
+	Message      string        `gorm:"default:''"`
 	ClaimReviews []ClaimReview `gorm:"foreignKey:ClaimId"`
 	Files        []File        `gorm:"foreignKey:MedicalClaimID"`
 }

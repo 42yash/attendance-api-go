@@ -23,9 +23,7 @@
 Thumbs.db
 
 # Temporary files
-tmp/
 api
-tmp/main
 tmp/main
 .env
 /tmp
